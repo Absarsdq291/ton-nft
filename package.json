@@ -1,0 +1,38 @@
+{
+  "name": "first_contract",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "npx blueprint build",
+    "test": "jest",
+    "deploy": "npx blueprint run"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@orbs-network/ton-access": "^2.3.3",
+    "@swc/core": "^1.7.35",
+    "@ton-community/func-js": "^0.7.0",
+    "@ton/blueprint": "^0.24.0",
+    "@ton/core": "^0.59.0",
+    "@ton/sandbox": "^0.22.0",
+    "@ton/ton": "^15.1.0",
+    "@types/jest": "^29.5.13",
+    "@types/node": "^22.7.5",
+    "@types/qrcode-terminal": "^0.12.2",
+    "@types/qs": "^6.9.16",
+    "dotenv": "^16.4.5",
+    "jest": "^29.7.0",
+    "qrcode-terminal": "^0.12.0",
+    "qs": "^6.13.0",
+    "ton-crypto": "^3.2.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  },
+  "devDependencies": {
+    "@ton/test-utils": "^0.4.2",
+    "husky": "^9.1.6"
+  }
+}

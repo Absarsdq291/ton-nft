@@ -5,7 +5,7 @@ import '@ton/test-utils';
 import { compile } from '@ton/blueprint';
 import { NFTItem } from '../wrappers/NftItem';
 
-describe('NFTCollection', () => {
+describe('NFTCollection and NFTItem Tests', () => {
     let collectionCode: Cell;
     let nftItemCode: Cell;
     let blockchain: Blockchain;
@@ -140,4 +140,81 @@ describe('NFTCollection', () => {
         const collectionData = await nftCollection.getCollectionData();
         expect(collectionData.ownerAddress).toEqualAddress(newOwner.address);
     });
+
+    it("should not change the item owner when tried by someone other than the original owner", async () => {
+        const randomSeed = Math.floor(Math.random() * 10000);
+
+        const changeOwnerResult = await nftItem.sendTransferOwnership(newOwner.getSender(),
+        {
+            value: toNano("0.05"),
+            queryId: randomSeed,
+            itemIndex: 0,
+            newOwnerAddress: newOwner.address,
+            responseDestination: newOwner.address,
+            forwardAmount: toNano("0.04")
+        });
+        expect(changeOwnerResult.transactions).toHaveTransaction({
+            from: newOwner.address,
+            to: nftItem.address,
+            success: false
+        })
+
+    })
+
+    it('should change the item owner', async () => {
+        const randomSeed= Math.floor(Math.random() * 10000);
+
+        const changeOwnerResult = await nftItem.sendTransferOwnership(deployer.getSender(), 
+        {
+            value: toNano("0.05"),
+            queryId: randomSeed,
+            itemIndex: 0,
+            newOwnerAddress: newOwner.address,
+            responseDestination: newOwner.address,
+            forwardAmount: toNano('0.04')
+        });
+        expect(changeOwnerResult.transactions).toHaveTransaction({
+            from: deployer.address,
+            to: nftItem.address,
+            success: true
+        });
+    });
+
+    it("should add like when liked by any user", async () => {
+        const randomSeed= Math.floor(Math.random() * 10000);
+
+        const likeNftResult = await nftItem.sendLike(newOwner.getSender(),
+        {   
+            value: toNano("0.05"),
+            queryId: randomSeed
+        });
+
+        expect(likeNftResult.transactions).toHaveTransaction({
+            from: newOwner.address,
+            to: nftItem.address,
+            success: true
+        })
+
+        const nftData = await nftItem.getNftData();
+        console.log(nftData)
+    })
+
+    it("should not add like when liked by the same user again", async () => {
+        const randomSeed = Math.floor(Math.random() * 10000);
+
+        const likeNftResult = await nftItem.sendLike(newOwner.getSender(),
+        {   
+            value: toNano("0.05"),
+            queryId: randomSeed
+        });
+
+        expect(likeNftResult.transactions).toHaveTransaction({
+            from: newOwner.address,
+            to: nftItem.address,
+            success: false
+        })
+
+        const nftData = await nftItem.getNftData();
+        console.log(nftData)
+    })
 });

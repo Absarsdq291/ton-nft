@@ -53,6 +53,7 @@ export class NFTItem implements Contract {
             collectionAddress: res.stack.readAddress(),
             ownerAddress: res.stack.readAddress(),
             content: res.stack.readCell(), // The stored content (metadata)
+            likesCount: res.stack.readBigNumber()
         };
     }
 
@@ -86,6 +87,28 @@ export class NFTItem implements Contract {
           sendMode: SendMode.PAY_GAS_SEPARATELY,                 // Send mode (pay gas separately, revert on errors)
           body: messageBody                // Body with operation details and payload
         });
-
       }
+
+    //Send Transaction to add like
+    async sendLike(
+        provider: ContractProvider,
+        via: Sender,
+        opts: {
+            value: bigint,
+            queryId: number
+        }
+    ) {
+        const messageBody = beginCell()
+            .storeUint(1, 32)
+            .storeUint(opts.queryId, 64)
+            .endCell()
+
+         // Send the message to the contract
+        const tx = await provider.internal(via, {
+            value: opts.value,               // Specify the value to send with the message
+            sendMode: SendMode.PAY_GAS_SEPARATELY,                 // Send mode (pay gas separately, revert on errors)
+            body: messageBody                // Body with operation details and payload
+          });
+        
+    }
 }

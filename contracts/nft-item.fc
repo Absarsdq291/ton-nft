@@ -28,23 +28,25 @@ int min_tons_for_storage() asm "50000000 PUSHINT"; ;; 0.05 TON
 ;;  cell content
 ;;
 
-(int, int, slice, slice, cell) load_data() {
+(int, int, slice, slice, cell, int, cell) load_data() {
     slice ds = get_data().begin_parse();
     var (index, collection_address) = (ds~load_uint(64), ds~load_msg_addr());
     if (ds.slice_bits() > 0) {
-      return (-1, index, collection_address, ds~load_msg_addr(), ds~load_ref());
+      return (-1, index, collection_address, ds~load_msg_addr(), ds~load_ref(), ds~load_uint(64), ds~load_dict());
     } else {  
-      return (0, index, collection_address, null(), null()); ;; nft not initialized yet
+      return (0, index, collection_address, null(), null(), 0, null()); ;; nft not initialized yet
     }
 }
 
-() store_data(int index, slice collection_address, slice owner_address, cell content) impure {
+() store_data(int index, slice collection_address, slice owner_address, cell content, int likes_count, cell likers_dict) impure {
     set_data(
         begin_cell()
             .store_uint(index, 64)
             .store_slice(collection_address)
             .store_slice(owner_address)
             .store_ref(content)
+            .store_uint(likes_count, 64)
+            .store_dict(likers_dict)
             .end_cell()
     );
 }
@@ -65,8 +67,31 @@ int min_tons_for_storage() asm "50000000 PUSHINT"; ;; 0.05 TON
   send_raw_message(msg.end_cell(), send_mode);
 }
 
+() add_like(slice user_address) impure {
+    var (init?, index, collection_address, owner_address, content, likes_count, likers_dict) = load_data();
+
+    ;;Check if this user has already liked the item
+    (slice item_likers, int found) = udict_get?(likers_dict, 256, slice_hash(user_address));
+    
+    if (found != 0) {
+      throw(700);
+    }
+
+    ;; Increment the like count
+    likes_count += 1;
+
+    ;; Update likers_dict to include the new liker’s address
+    likers_dict = udict_set(likers_dict, 256, slice_hash(user_address), user_address);
+
+    ;; Store the updated data
+    store_data(index, collection_address, owner_address, content, likes_count, likers_dict);
+}
+
+
 () transfer_ownership(int my_balance, int index, slice collection_address, slice owner_address, cell content, slice sender_address, int query_id, slice in_msg_body, int fwd_fees) impure inline {
     throw_unless(401, equal_slices(sender_address, owner_address));
+
+    (_, _, _, _, _, int likes_count, cell likers_dict) = load_data();
 
     slice new_owner_address = in_msg_body~load_msg_addr();
     force_chain(new_owner_address);
@@ -94,7 +119,7 @@ int min_tons_for_storage() asm "50000000 PUSHINT"; ;; 0.05 TON
       send_msg(response_destination, rest_amount, op::excesses(), query_id, null(), 1); ;; paying fees, revert on errors
     }
 
-    store_data(index, collection_address, new_owner_address, content);
+    store_data(index, collection_address, new_owner_address, content, likes_count, likers_dict);
 }
 
 () recv_internal(int my_balance, int msg_value, cell in_msg_full, slice in_msg_body) impure {
@@ -117,15 +142,20 @@ int min_tons_for_storage() asm "50000000 PUSHINT"; ;; 0.05 TON
     int fwd_fee = muldiv(cs~load_coins(), 3, 2); ;; we use message fwd_fee for estimation of forward_payload costs
 
 
-    (int init?, int index, slice collection_address, slice owner_address, cell content) = load_data();
+    (int init?, int index, slice collection_address, slice owner_address, cell content, int likes_count, cell likers_dict) = load_data();
     if (~ init?) {
       throw_unless(405, equal_slices(collection_address, sender_address));
-      store_data(index, collection_address, in_msg_body~load_msg_addr(), in_msg_body~load_ref());
+      store_data(index, collection_address, in_msg_body~load_msg_addr(), in_msg_body~load_ref(), 0, null());
       return ();
     }
 
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
+
+    if(op == 1){
+      add_like(sender_address);
+      return();
+    }
 
     if (op == op::transfer()) {
       transfer_ownership(my_balance, index, collection_address, owner_address, content, sender_address, query_id, in_msg_body, fwd_fee);
@@ -142,7 +172,7 @@ int min_tons_for_storage() asm "50000000 PUSHINT"; ;; 0.05 TON
 ;;  GET Methods
 ;;
 
-(int, int, slice, slice, cell) get_nft_data() method_id {
-  (int init?, int index, slice collection_address, slice owner_address, cell content) = load_data();
-  return (init?, index, collection_address, owner_address, content);
+(int, int, slice, slice, cell, int) get_nft_data() method_id {
+  (int init?, int index, slice collection_address, slice owner_address, cell content, int likes_count, _) = load_data();
+  return (init?, index, collection_address, owner_address, content, likes_count);
 }

@@ -57,6 +57,13 @@ export class NFTItem implements Contract {
         };
     }
 
+    async getBalance(provider: ContractProvider) {
+        const { stack } = await provider.get("balance", []);
+        return {
+          number: stack.readNumber(),
+        };
+    } 
+
     // Send transaction to transfer NFT ownership
     async sendTransferOwnership(
         provider: ContractProvider,
@@ -111,4 +118,48 @@ export class NFTItem implements Contract {
           });
         
     }
+
+    async sendDeposit(
+        provider: ContractProvider, 
+        via: Sender, 
+        opts: {
+            value: bigint,
+            queryId: number
+        }
+    ) {
+        const messageBody = beginCell()
+          .storeUint(2, 32) // OP code
+          .storeUint(opts.queryId, 64)
+          .endCell();
+    
+        await provider.internal(via, {
+          value: opts.value,
+          sendMode: SendMode.PAY_GAS_SEPARATELY,
+          body: messageBody,
+        });
+      }
+    
+    async sendWithdraw(
+        provider: ContractProvider, 
+        via: Sender, 
+        opts: {
+            value: bigint,
+            queryId: number,
+            amount: bigint
+        }
+    ) {
+        const messageBody = beginCell()
+          .storeUint(3, 32) // OP code
+          .storeUint(opts.queryId, 64)
+          .storeCoins(opts.amount)
+          .endCell();
+    
+        await provider.internal(via, {
+          value: opts.value,
+          sendMode: SendMode.PAY_GAS_SEPARATELY,
+          body: messageBody,
+        });
+    }
+
+    
 }

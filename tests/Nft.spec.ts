@@ -197,7 +197,7 @@ describe('NFTCollection and NFTItem Tests', () => {
 
         const nftData = await nftItem.getNftData();
         console.log(nftData)
-    })
+    });
 
     it("should not add like when liked by the same user again", async () => {
         const randomSeed = Math.floor(Math.random() * 10000);
@@ -216,5 +216,46 @@ describe('NFTCollection and NFTItem Tests', () => {
 
         const nftData = await nftItem.getNftData();
         console.log(nftData)
-    })
+    });
+
+    it("successfully deposits funds", async () => {
+        const randomSeed = Math.floor(Math.random() * 10000);
+
+        const depositMessageResult = await nftItem.sendDeposit(
+          deployer.getSender(),
+        {
+            value: toNano("5"),
+            queryId: randomSeed
+        });
+    
+        expect(depositMessageResult.transactions).toHaveTransaction({
+          from: deployer.address,
+          to: nftItem.address,
+          success: true,
+        });
+
+        const balance = await nftItem.getBalance();
+        console.log(balance);
+    });
+
+    it("successfully withdraws funds", async () => {
+        const randomSeed = Math.floor(Math.random() * 10000);
+
+        const withdrawalMessageResult = await nftItem.sendWithdraw(
+          newOwner.getSender(),
+        {
+            value: toNano("0.05"),
+            queryId: randomSeed,
+            amount: toNano("4")
+        });
+    
+        expect(withdrawalMessageResult.transactions).toHaveTransaction({
+          from: nftItem.address,
+          to: newOwner.address,
+          success: true,
+        });
+
+        const balance = await nftItem.getBalance();
+        console.log(balance);
+    });
 });

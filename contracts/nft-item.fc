@@ -17,6 +17,7 @@
 #include "op-codes.fc";
 #include "params.fc";
 
+const const::min_tons_for_storage = 50000000;
 int min_tons_for_storage() asm "50000000 PUSHINT"; ;; 0.05 TON
 
 ;;
@@ -157,6 +158,30 @@ int min_tons_for_storage() asm "50000000 PUSHINT"; ;; 0.05 TON
       return();
     }
 
+    if(op == 2){
+      return();
+    }
+
+    if(op == 3){
+      throw_unless(103, equal_slices(sender_address, owner_address));
+
+      int withdraw_amount = in_msg_body~load_coins();
+      var [balance, _] = get_balance();
+      throw_unless(104, balance >= withdraw_amount);
+
+      int return_value = min(withdraw_amount, balance - const::min_tons_for_storage);
+
+      var msg = begin_cell()
+          .store_uint(0x18, 6)
+          .store_slice(sender_address)
+          .store_coins(return_value)
+          .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
+
+      send_raw_message(msg.end_cell(), 1);
+
+      return();
+    }
+
     if (op == op::transfer()) {
       transfer_ownership(my_balance, index, collection_address, owner_address, content, sender_address, query_id, in_msg_body, fwd_fee);
       return ();
@@ -175,4 +200,9 @@ int min_tons_for_storage() asm "50000000 PUSHINT"; ;; 0.05 TON
 (int, int, slice, slice, cell, int) get_nft_data() method_id {
   (int init?, int index, slice collection_address, slice owner_address, cell content, int likes_count, _) = load_data();
   return (init?, index, collection_address, owner_address, content, likes_count);
+}
+
+int balance() method_id {
+  var [balance, _] = get_balance();
+  return balance;
 }
